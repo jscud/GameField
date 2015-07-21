@@ -17,6 +17,6 @@ sets the clicked pixel to a random color.
 gameField.eachTick = function() {
   var click = gameField.checkClick();
   if (click) {
-    gameField.setTile(click.x, click.y, randomColor());
+    setpixel(click.x, click.y, randomColor());
   }
 };

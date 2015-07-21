@@ -3,11 +3,31 @@
   <head>
   </head>
   <body>
-    <canvas id="field" width="300" height="300"></canvas>
+    <div>
+      <button onclick="displayRun()">Run</button> <button onclick="displayCode()">Code</button> <button onclick="displayMyPrograms()">My Programs</button>
+    </div>
+    <div id="game-field">
+    </div>
+    <div id="code-editor" style="display:none">
+      Program Name: <input id="program-name" value="first" onchange="loadProgramFromInput()"></input><br>
+      <span id="code-area" contenteditable="true" style="font-family:monospace">
+          // Your code here :-)<br>
+          gameField.eachTick = function() {<br>
+          &nbsp;&nbsp;var click = gameField.checkClick();<br>
+          &nbsp;&nbsp;if (click) {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;setpixel(click.x, click.y, randomColor());<br>
+          &nbsp;&nbsp;}<br>
+          };
+      </span>
+    </div>
+    <div id="my-programs" style="display:none">
+      Programs:<br>
+    </div>
     <script>
       var rows = 20;
-      var tileSize = 10;
-      var eventLoopDelay = 300;
+      var tileSize = 30;
+      var eventLoopDelay = 100;
+
       function GameField(numRows, numCols, tileSize) {
         this.numRows = numRows;
         this.numCols = numCols;
@@ -15,7 +35,7 @@
         this.clickQueue = [];
       }
 
-      GameField.prototype.setTile = function(x, y, color) {
+      GameField.prototype.setPixel = function(x, y, color) {
         var field = document.getElementById('field');
         var fieldContext = field.getContext('2d');
         fieldContext.fillStyle = color;
@@ -23,16 +43,28 @@
       };
 
       GameField.prototype.listenForEvents_ = function() {
-        if (!this.listenersAdded_) {
-          var field = document.getElementById('field');
-          var thisGameField = this;
-          field.addEventListener('click', function(e) {
-            thisGameField.clickQueue.push(
-                [Math.floor(e.clientX / tileSize),
-                 Math.floor(e.clientY / tileSize)]);
-          }, true);
-          this.listenersAdded_ = true;
-        }
+        var field = document.getElementById('field');
+        var thisGameField = this;
+        field.addEventListener('click', function(e) {
+          var x;
+          var y;
+          if (e.pageX || e.pageY) { 
+            x = e.pageX;
+            y = e.pageY;
+          } else { 
+            x = e.clientX + document.body.scrollLeft +
+                document.documentElement.scrollLeft; 
+            y = e.clientY + document.body.scrollTop +
+                document.documentElement.scrollTop; 
+          } 
+          var fieldCanvas = document.getElementById('field');
+          x -= fieldCanvas.offsetLeft;
+          y -= fieldCanvas.offsetTop;
+
+          thisGameField.clickQueue.push(
+              [Math.floor(x / thisGameField.tileSize),
+               Math.floor(y / thisGameField.tileSize)]);
+        }, true);
       };
 
       // Gets the next click if there is one.
@@ -60,14 +92,134 @@
         return digits.join('');
       }
 
-      var gameField = new GameField(1,1,10);
+      var gameField = new GameField(rows,rows,tileSize);
       
       setInterval(function() {
        if (gameField.eachTick) {
          gameField.eachTick();
        }
       }, eventLoopDelay);
-      gameField.listenForEvents_();
+
+      function setpixel(x, y, color) {
+        gameField.setPixel(x, y, color);
+      }
+
+      function add(x, y) {
+        return x + y;
+      }
+
+      function sub(x, y) {
+        return x - y;
+      }
+
+      function color(red, blue, green) {
+        return ['#',
+            hexDigits_[Math.floor(red / 16)],
+            hexDigits_[red % 16],
+            hexDigits_[Math.floor(blue / 16)],
+            hexDigits_[blue % 16],
+            hexDigits_[Math.floor(green / 16)],
+            hexDigits_[green % 16]].join('');
+      }
+
+      function saveProgram() {
+        var programName = document.getElementById('program-name').value;
+        if (!programName) {
+          console.log('no file name given, not saving program');
+          return;
+        }
+        localStorage['program-' + programName] = document.getElementById(
+            'code-area').innerHTML;
+      }
+
+      function loadProgram(programName) {
+        document.getElementById('program-name').value = programName;
+        var code = localStorage['program-' + programName]
+        if (code) {
+          document.getElementById('code-area').innerHTML = code;
+        } else {
+          document.getElementById('code-area').innerHTML = 
+              '// Your code here :-)';
+        }
+      }
+
+      function loadProgramFromInput() {
+        var programName = document.getElementById('program-name').value;
+        if (!programName) {
+          console.log('no file name given, not loading program');
+          return;
+        }
+        loadProgram(programName);
+      }
+
+      function createGameField(numPixelsWide, numPixelsHigh) {
+        // Wipe out old canvas.
+        var gameFieldDiv = document.getElementById('game-field');
+        gameFieldDiv.innerHTML = '';
+        // Wipe out old event listener.
+        gameField.eachTick = null;
+        // Determine new game fild pixel size.
+        var maxPixelSizeBasedOnWidth = Math.floor((document.documentElement.clientWidth - 20) / numPixelsWide)
+        var maxPixelSizeBasedOnHeight = Math.floor((document.documentElement.clientHeight - 30) / numPixelsHigh)
+        var pixelSize = Math.min(maxPixelSizeBasedOnWidth, maxPixelSizeBasedOnHeight);
+        // Create new game field.
+        var gameFieldCanvas = document.createElement('canvas');
+        gameFieldCanvas.id = 'field';
+        gameFieldCanvas.width = pixelSize * numPixelsWide;
+        gameFieldCanvas.height = pixelSize * numPixelsHigh;
+        gameFieldCanvas.style.border = '1px solid #000000';
+        gameFieldDiv.appendChild(gameFieldCanvas);
+        gameField.numRows = numPixelsHigh;
+        gameField.numCols = numPixelsWide;
+        gameField.tileSize = pixelSize;
+        gameField.listenForEvents_();
+      }
+
+      function displayRun() {
+        saveProgram();
+        document.getElementById('code-editor').style.display = 'none';
+        document.getElementById('my-programs').style.display = 'none';
+        var gameFieldDiv = document.getElementById('game-field');
+        gameFieldDiv.style.display = '';
+        createGameField(16, 16);
+
+        var code = document.getElementById('code-area').innerText;
+        eval(code);
+      }
+
+      function displayCode() {
+        document.getElementById('game-field').style.display = 'none';
+        document.getElementById('my-programs').style.display = 'none';
+        document.getElementById('code-editor').style.display = '';
+      }
+
+      function generateProgramOpener(programName) {
+        return function() {
+          loadProgram(programName);
+          displayCode();
+        }
+      }
+
+      function displayMyPrograms() {
+        document.getElementById('game-field').style.display = 'none';
+        document.getElementById('code-editor').style.display = 'none';
+        var programsDiv = document.getElementById('my-programs');
+        programsDiv.style.display = '';
+        programsDiv.innerHTML = 'Programs:<br>';
+
+        for (var programKey in localStorage) {
+          if (programKey.indexOf('program-') == 0) {
+            var programName = programKey.substr('program-'.length);
+            var a = document.createElement('a');
+            a.onclick = generateProgramOpener(programName);
+            a.innerText = programName;
+            programsDiv.appendChild(a);
+            programsDiv.appendChild(document.createElement('br'));
+          }
+        }
+      }
+
+      displayRun();
     </script>
   </body>
 </html>
