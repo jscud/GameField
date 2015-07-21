@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+  </head>
+  <body>
+    <canvas id="field" width="300" height="300"></canvas>
+    <script>
+      var rows = 20;
+      var tileSize = 10;
+      var eventLoopDelay = 300;
+      function GameField(numRows, numCols, tileSize) {
+        this.numRows = numRows;
+        this.numCols = numCols;
+        this.tileSize = tileSize;
+        this.clickQueue = [];
+      }
+
+      GameField.prototype.setTile = function(x, y, color) {
+        var field = document.getElementById('field');
+        var fieldContext = field.getContext('2d');
+        fieldContext.fillStyle = color;
+        fieldContext.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+      };
+
+      GameField.prototype.listenForEvents_ = function() {
+        if (!this.listenersAdded_) {
+          var field = document.getElementById('field');
+          var thisGameField = this;
+          field.addEventListener('click', function(e) {
+            thisGameField.clickQueue.push(
+                [Math.floor(e.clientX / tileSize),
+                 Math.floor(e.clientY / tileSize)]);
+          }, true);
+          this.listenersAdded_ = true;
+        }
+      };
+
+      // Gets the next click if there is one.
+      GameField.prototype.checkClick = function() {
+        if (this.clickQueue.length > 0) {
+          var click = this.clickQueue[0];
+          this.clickQueue = this.clickQueue.slice(1);
+          return {x: click[0], y: click[1]};
+        }
+        return null;
+      };
+
+      function randomNumber(low, high) {
+        return Math.floor(Math.random() * ((high - low + 1))) + low;
+      }
+
+      var hexDigits_ = ['0', '1', '2', '3', '4', '5', '6', '7',
+                        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+
+      function randomColor() {
+        var digits = ['#'];
+        for (var i = 0; i < 6; i++) {
+          digits.push(hexDigits_[randomNumber(0, 15)]);
+        }
+        return digits.join('');
+      }
+
+      var gameField = new GameField(1,1,10);
+      
+      setInterval(function() {
+       if (gameField.eachTick) {
+         gameField.eachTick();
+       }
+      }, eventLoopDelay);
+      gameField.listenForEvents_();
+    </script>
+  </body>
+</html>
