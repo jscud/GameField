@@ -4,222 +4,263 @@
   </head>
   <body>
     <div>
-      <button onclick="displayRun()">Run</button> <button onclick="displayCode()">Code</button> <button onclick="displayMyPrograms()">My Programs</button>
+      <button onclick="GameField.displayRun_()">Run</button>
+      <button onclick="GameField.displayCode_()">Code</button>
+      <button onclick="GameField.displayMyPrograms_()">My Programs</button>
     </div>
     <div id="game-field">
     </div>
     <div id="code-editor" style="display:none">
-      Program Name: <input id="program-name" value="first" onchange="loadProgramFromInput()"></input><br>
+      Program Name: <input id="program-name" value="first example"></input><br>
       <span id="code-area" contenteditable="true" style="font-family:monospace">
-          // Your code here :-)<br>
-          gameField.eachTick = function() {<br>
-          &nbsp;&nbsp;var click = gameField.checkClick();<br>
-          &nbsp;&nbsp;if (click) {<br>
-          &nbsp;&nbsp;&nbsp;&nbsp;setpixel(click.x, click.y, randomColor());<br>
-          &nbsp;&nbsp;}<br>
-          };
+// Your code here :-)<br>
+GameField.eachTick = function() {<br>
+&nbsp;&nbsp;var click = checkclick();<br>
+&nbsp;&nbsp;if (click) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;setpixel(click.x, click.y, randomcolor());<br>
+&nbsp;&nbsp;}<br>
+};
       </span>
     </div>
     <div id="my-programs" style="display:none">
       Programs:<br>
     </div>
     <script>
-      var rows = 20;
-      var tileSize = 30;
-      var eventLoopDelay = 100;
+// Unnamed closure to avoid polluting the global namespace.
+(function() {
+var publicGameField = {};
 
-      function GameField(numRows, numCols, tileSize) {
-        this.numRows = numRows;
-        this.numCols = numCols;
-        this.tileSize = tileSize;
-        this.clickQueue = [];
-      }
+// Constructor for a game field state container.
+function GameEngine() {
+  this.numRows = 0;
+  this.numCols = 0;
+  this.tileSize = 1;
+  this.eventLoopDelay = 100;
+  this.reset_();
+  this.eventLoopInterval = null;
+}
 
-      GameField.prototype.setPixel = function(x, y, color) {
-        var field = document.getElementById('field');
-        var fieldContext = field.getContext('2d');
-        fieldContext.fillStyle = color;
-        fieldContext.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
-      };
+// Called before creating a new canvas to remove internal state associated
+// with a run on a GameField program.
+GameEngine.prototype.reset_ = function() {
+  this.clickQueue = [];
+  this.eventListenerStarted = false;
+};
 
-      GameField.prototype.listenForEvents_ = function() {
-        var field = document.getElementById('field');
-        var thisGameField = this;
-        field.addEventListener('click', function(e) {
-          var x;
-          var y;
-          if (e.pageX || e.pageY) { 
-            x = e.pageX;
-            y = e.pageY;
-          } else { 
-            x = e.clientX + document.body.scrollLeft +
-                document.documentElement.scrollLeft; 
-            y = e.clientY + document.body.scrollTop +
-                document.documentElement.scrollTop; 
-          } 
-          var fieldCanvas = document.getElementById('field');
-          x -= fieldCanvas.offsetLeft;
-          y -= fieldCanvas.offsetTop;
+// Starts an event loop to call GameField.eachTick at the interval specified
+// by the stored event loop internal.
+GameEngine.prototype.resetEventLoop_ = function() {
+  if (this.eventLoopInterval) {
+    clearInterval(this.eventLoopInterval);
+  }
+  this.eventLoopInterval = setInterval(function() {
+    if (publicGameField.eachTick) {
+      publicGameField.eachTick();
+    }
+  }, this.eventLoopDelay);
+};
 
-          thisGameField.clickQueue.push(
-              [Math.floor(x / thisGameField.tileSize),
-               Math.floor(y / thisGameField.tileSize)]);
-        }, true);
-      };
+// Starts recording clicks on the canvas, saving them in the GameField click
+// queue.
+GameEngine.prototype.listenForEvents_ = function() {
+  var field = document.getElementById('field');
+  var thisGameEngine = this;
+  field.addEventListener('click', function(e) {
+    var x;
+    var y;
+    if (e.pageX || e.pageY) { 
+      x = e.pageX;
+      y = e.pageY;
+    } else { 
+      x = e.clientX + document.body.scrollLeft +
+          document.documentElement.scrollLeft; 
+      y = e.clientY + document.body.scrollTop +
+          document.documentElement.scrollTop; 
+    } 
+    var fieldCanvas = document.getElementById('field');
+    x -= fieldCanvas.offsetLeft;
+    y -= fieldCanvas.offsetTop;
 
-      // Gets the next click if there is one.
-      GameField.prototype.checkClick = function() {
-        if (this.clickQueue.length > 0) {
-          var click = this.clickQueue[0];
-          this.clickQueue = this.clickQueue.slice(1);
-          return {x: click[0], y: click[1]};
-        }
-        return null;
-      };
+    thisGameEngine.clickQueue.push(
+        [Math.floor(x / thisGameEngine.tileSize),
+         Math.floor(y / thisGameEngine.tileSize)]);
+  }, true);
+};
 
-      function randomNumber(low, high) {
-        return Math.floor(Math.random() * ((high - low + 1))) + low;
-      }
+// Creates a blank game field canvas prepared to start running a
+// GameField program.
+GameEngine.prototype.resetCanvas = function(numPixelsWide, numPixelsHigh) {
+  this.reset_();
+  // Wipe out old canvas.
+  var gameFieldDiv = document.getElementById('game-field');
+  gameFieldDiv.innerHTML = '';
+  // Determine new game fild pixel size.
+  var maxPixelSizeBasedOnWidth = Math.floor(
+      (document.documentElement.clientWidth - 20) / numPixelsWide);
+  var maxPixelSizeBasedOnHeight = Math.floor(
+      (document.documentElement.clientHeight - 30) / numPixelsHigh);
+  var pixelSize = Math.min(
+      maxPixelSizeBasedOnWidth, maxPixelSizeBasedOnHeight);
+  // Create new game field.
+  var gameFieldCanvas = document.createElement('canvas');
+  gameFieldCanvas.id = 'field';
+  gameFieldCanvas.width = pixelSize * numPixelsWide;
+  gameFieldCanvas.height = pixelSize * numPixelsHigh;
+  gameFieldCanvas.style.border = '1px solid #000000';
+  gameFieldDiv.appendChild(gameFieldCanvas);
 
-      var hexDigits_ = ['0', '1', '2', '3', '4', '5', '6', '7',
-                        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+  this.numRows = numPixelsHigh;
+  this.numCols = numPixelsWide;
+  this.tileSize = pixelSize;
+  this.listenForEvents_();
+  this.resetEventLoop_();
+};
 
-      function randomColor() {
-        var digits = ['#'];
-        for (var i = 0; i < 6; i++) {
-          digits.push(hexDigits_[randomNumber(0, 15)]);
-        }
-        return digits.join('');
-      }
+GameEngine.prototype.setPixel = function(x, y, color) {
+  var field = document.getElementById('field');
+  var fieldContext = field.getContext('2d');
+  fieldContext.fillStyle = color;
+  fieldContext.fillRect(
+      x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+};
 
-      var gameField = new GameField(rows,rows,tileSize);
-      
-      setInterval(function() {
-       if (gameField.eachTick) {
-         gameField.eachTick();
-       }
-      }, eventLoopDelay);
+// Gets the next stored click if there is one.
+GameEngine.prototype.checkClick = function() {
+  if (this.clickQueue.length > 0) {
+    var click = this.clickQueue[0];
+    this.clickQueue = this.clickQueue.slice(1);
+    return {x: click[0], y: click[1]};
+  }
+  return null;
+};
 
-      function setpixel(x, y, color) {
-        gameField.setPixel(x, y, color);
-      }
+function randomNumber(low, high) {
+  return Math.floor(Math.random() * ((high - low + 1))) + low;
+}
 
-      function add(x, y) {
-        return x + y;
-      }
+var hexDigits_ = ['0', '1', '2', '3', '4', '5', '6', '7',
+                  '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
 
-      function sub(x, y) {
-        return x - y;
-      }
+function randomColor() {
+  var digits = ['#'];
+  for (var i = 0; i < 6; i++) {
+    digits.push(hexDigits_[randomNumber(0, 15)]);
+  }
+  return digits.join('');
+}
 
-      function color(red, blue, green) {
-        return ['#',
-            hexDigits_[Math.floor(red / 16)],
-            hexDigits_[red % 16],
-            hexDigits_[Math.floor(blue / 16)],
-            hexDigits_[blue % 16],
-            hexDigits_[Math.floor(green / 16)],
-            hexDigits_[green % 16]].join('');
-      }
+function randomColor() {
+  var digits = ['#'];
+  for (var i = 0; i < 6; i++) {
+    digits.push(hexDigits_[randomNumber(0, 15)]);
+  }
+  return digits.join('');
+}
 
-      function saveProgram() {
-        var programName = document.getElementById('program-name').value;
-        if (!programName) {
-          console.log('no file name given, not saving program');
-          return;
-        }
-        localStorage['program-' + programName] = document.getElementById(
-            'code-area').innerHTML;
-      }
+// Singleton GameEngine used by functions exposed for users.
+var gameField = new GameEngine();
 
-      function loadProgram(programName) {
-        document.getElementById('program-name').value = programName;
-        var code = localStorage['program-' + programName]
-        if (code) {
-          document.getElementById('code-area').innerHTML = code;
-        } else {
-          document.getElementById('code-area').innerHTML = 
-              '// Your code here :-)';
-        }
-      }
+var PROGRAM_PREFIX = 'gameField-program-';
 
-      function loadProgramFromInput() {
-        var programName = document.getElementById('program-name').value;
-        if (!programName) {
-          console.log('no file name given, not loading program');
-          return;
-        }
-        loadProgram(programName);
-      }
+function saveProgram_() {
+  var programName = document.getElementById('program-name').value;
+  if (!programName) {
+    console.log('no file name given, not saving program');
+    return;
+  }
+  localStorage[PROGRAM_PREFIX + programName] = document.getElementById(
+      'code-area').innerHTML;
+}
 
-      function createGameField(numPixelsWide, numPixelsHigh) {
-        // Wipe out old canvas.
-        var gameFieldDiv = document.getElementById('game-field');
-        gameFieldDiv.innerHTML = '';
-        // Wipe out old event listener.
-        gameField.eachTick = null;
-        // Determine new game fild pixel size.
-        var maxPixelSizeBasedOnWidth = Math.floor((document.documentElement.clientWidth - 20) / numPixelsWide)
-        var maxPixelSizeBasedOnHeight = Math.floor((document.documentElement.clientHeight - 30) / numPixelsHigh)
-        var pixelSize = Math.min(maxPixelSizeBasedOnWidth, maxPixelSizeBasedOnHeight);
-        // Create new game field.
-        var gameFieldCanvas = document.createElement('canvas');
-        gameFieldCanvas.id = 'field';
-        gameFieldCanvas.width = pixelSize * numPixelsWide;
-        gameFieldCanvas.height = pixelSize * numPixelsHigh;
-        gameFieldCanvas.style.border = '1px solid #000000';
-        gameFieldDiv.appendChild(gameFieldCanvas);
-        gameField.numRows = numPixelsHigh;
-        gameField.numCols = numPixelsWide;
-        gameField.tileSize = pixelSize;
-        gameField.listenForEvents_();
-      }
+function loadProgram_(programName) {
+  document.getElementById('program-name').value = programName;
+  var code = localStorage[PROGRAM_PREFIX + programName]
+  if (code) {
+    document.getElementById('code-area').innerHTML = code;
+  } else {
+    document.getElementById('code-area').innerHTML = '// Your code here :-)';
+  }
+}
 
-      function displayRun() {
-        saveProgram();
-        document.getElementById('code-editor').style.display = 'none';
-        document.getElementById('my-programs').style.display = 'none';
-        var gameFieldDiv = document.getElementById('game-field');
-        gameFieldDiv.style.display = '';
-        createGameField(16, 16);
+// Functions exposed to that button click handlers can load, save, and run
+// programs.
+publicGameField.displayRun_ = function() {
+  saveProgram_();
+  document.getElementById('code-editor').style.display = 'none';
+  document.getElementById('my-programs').style.display = 'none';
+  var gameFieldDiv = document.getElementById('game-field');
+  gameFieldDiv.style.display = '';
+  gameField.resetCanvas(16, 16);
 
-        var code = document.getElementById('code-area').innerText;
-        eval(code);
-      }
+  var code = document.getElementById('code-area').innerText;
+  eval(code);
+};
 
-      function displayCode() {
-        document.getElementById('game-field').style.display = 'none';
-        document.getElementById('my-programs').style.display = 'none';
-        document.getElementById('code-editor').style.display = '';
-      }
+publicGameField.displayCode_ = function() {
+  document.getElementById('game-field').style.display = 'none';
+  document.getElementById('my-programs').style.display = 'none';
+  document.getElementById('code-editor').style.display = '';
+};
 
-      function generateProgramOpener(programName) {
-        return function() {
-          loadProgram(programName);
-          displayCode();
-        }
-      }
+function generateProgramOpener_(programName) {
+  return function() {
+    loadProgram_(programName);
+    publicGameField.displayCode_();
+  }
+}
 
-      function displayMyPrograms() {
-        document.getElementById('game-field').style.display = 'none';
-        document.getElementById('code-editor').style.display = 'none';
-        var programsDiv = document.getElementById('my-programs');
-        programsDiv.style.display = '';
-        programsDiv.innerHTML = 'Programs:<br>';
+publicGameField.displayMyPrograms_ = function() {
+  saveProgram_();
+  document.getElementById('game-field').style.display = 'none';
+  document.getElementById('code-editor').style.display = 'none';
+  var programsDiv = document.getElementById('my-programs');
+  programsDiv.style.display = '';
+  programsDiv.innerHTML = 'Programs:<br>';
 
-        for (var programKey in localStorage) {
-          if (programKey.indexOf('program-') == 0) {
-            var programName = programKey.substr('program-'.length);
-            var a = document.createElement('a');
-            a.onclick = generateProgramOpener(programName);
-            a.innerText = programName;
-            programsDiv.appendChild(a);
-            programsDiv.appendChild(document.createElement('br'));
-          }
-        }
-      }
+  // Find everything in local storage that starts with the
+  // 'gameField-program-' prefix.
+  for (var programKey in localStorage) {
+    if (programKey.indexOf(PROGRAM_PREFIX) == 0) {
+      var programName = programKey.substr(PROGRAM_PREFIX.length);
+      var a = document.createElement('a');
+      a.onclick = generateProgramOpener_(programName);
+      a.innerText = programName;
+      programsDiv.appendChild(a);
+      programsDiv.appendChild(document.createElement('br'));
+    }
+  }
+};
 
-      displayRun();
+// Adds a function to the public name space to allow users to call it. Exposes
+// both the name given and an all lowercase name to allow users to skip having
+// to shift to uppercase.
+function addPublicFunction(name, f) {
+  publicGameField[name] = f;
+  window[name.toLowerCase()] = f;
+}
+
+addPublicFunction('setPixel', function(x, y, color) {
+  gameField.setPixel(x, y, color);
+});
+
+addPublicFunction('checkClick', function() {
+  return gameField.checkClick();
+});
+
+addPublicFunction('randomNumber', function(low, high) {
+  return randomNumber(low, high);
+});
+
+addPublicFunction('randomColor', function() {
+  return randomColor();
+});
+
+// Expose the GameField namespace.
+window['GameField'] = publicGameField;
+
+// Run the example program at the start.
+publicGameField.displayRun_();
+})();
     </script>
   </body>
 </html>
