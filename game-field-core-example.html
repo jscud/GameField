@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+  <body>
+    <script src="game-field-core.js"></script>
+    <div id="container"></div>
+    <script>
+      GameField.resetCanvas('container', 20, 20);
+      GameField.eachTick = function() {
+        var click = GameField.checkClick();
+        if (click) {
+          GameField.setPixel(click.x, click.y, GameField.randomColor());
+        }
+      };
+    </script>
+  </body>
+</html>
