@@ -11,9 +11,9 @@
    <script>
      GameField.resetCanvas('container', 20, 20);
      GameField.eachTick = function() {
-       var click = GameField.checkClick();
-       if (click) {
-         GameField.setPixel(click.x, click.y, GameField.randomColor());
+       var tap = GameField.checkTapStart();
+       if (tap) {
+         GameField.setPixel(tap.x, tap.y, GameField.randomColor());
        }
      };
    </script>
@@ -42,7 +42,7 @@ function GameEngine() {
 // Called before creating a new canvas to remove internal state associated
 // with a run on a GameField program.
 GameEngine.prototype.reset_ = function() {
-  this.clickQueue = [];
+  this.tapStartQueue = [];
   this.eventListenerStarted = false;
 };
 
@@ -83,8 +83,10 @@ GameEngine.prototype.convertPageXYToTileXY_ = function(e) {
 GameEngine.prototype.listenForEvents_ = function() {
   var field = document.getElementById(GAME_FIELD_CANVAS_ID_);
   var thisGameEngine = this;
-  field.addEventListener('click', function(e) {
-    thisGameEngine.clickQueue.push(thisGameEngine.convertPageXYToTileXY_(e));
+
+  field.addEventListener('mousedown', function(e) {
+    thisGameEngine.tapStartQueue.push(
+        thisGameEngine.convertPageXYToTileXY_(e));
   }, true);
 };
 
@@ -128,12 +130,13 @@ GameEngine.prototype.setPixel = function(x, y, color) {
       x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
 };
 
-// Gets the next stored click if there is one.
-GameEngine.prototype.checkClick = function() {
-  if (this.clickQueue.length > 0) {
-    var click = this.clickQueue[0];
-    this.clickQueue = this.clickQueue.slice(1);
-    return {x: click[0], y: click[1]};
+// Gets the next stored "tap" start if there is one. A tap is either a click
+// or a press with a finger (on a mobile device).
+GameEngine.prototype.checkTapStart = function() {
+  if (this.tapStartQueue.length > 0) {
+    var tapStart = this.tapStartQueue[0];
+    this.tapStartQueue = this.tapStartQueue.slice(1);
+    return {x: tapStart[0], y: tapStart[1]};
   }
   return null;
 };
@@ -160,8 +163,8 @@ publicGameField.setPixel = function(x, y, color) {
   gameField.setPixel(x, y, color);
 };
 
-publicGameField.checkClick = function() {
-  return gameField.checkClick();
+publicGameField.checkTapStart = function() {
+  return gameField.checkTapStart();
 };
 
 publicGameField.randomNumber = function(low, high) {
