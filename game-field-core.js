@@ -43,6 +43,7 @@ function GameEngine() {
 // with a run on a GameField program.
 GameEngine.prototype.reset_ = function() {
   this.tapStartQueue = [];
+  this.tapEndQueue = [];
   this.eventListenerStarted = false;
 };
 
@@ -86,6 +87,11 @@ GameEngine.prototype.listenForEvents_ = function() {
 
   field.addEventListener('mousedown', function(e) {
     thisGameEngine.tapStartQueue.push(
+        thisGameEngine.convertPageXYToTileXY_(e));
+  }, true);
+
+  field.addEventListener('mouseup', function(e) {
+    thisGameEngine.tapEndQueue.push(
         thisGameEngine.convertPageXYToTileXY_(e));
   }, true);
 };
@@ -141,6 +147,17 @@ GameEngine.prototype.checkTapStart = function() {
   return null;
 };
 
+// Gets the ending location for the next stored "tap" if there is one. A tap
+// is either a click or a press with a finger (on a mobile device).
+GameEngine.prototype.checkTapEnd = function() {
+  if (this.tapEndQueue.length > 0) {
+    var tapEnd = this.tapEndQueue[0];
+    this.tapEndQueue = this.tapEndQueue.slice(1);
+    return {x: tapEnd[0], y: tapEnd[1]};
+  }
+  return null;
+};
+
 function randomNumber(low, high) {
   return Math.floor(Math.random() * ((high - low + 1))) + low;
 }
@@ -165,6 +182,10 @@ publicGameField.setPixel = function(x, y, color) {
 
 publicGameField.checkTapStart = function() {
   return gameField.checkTapStart();
+};
+
+publicGameField.checkTapEnd = function() {
+  return gameField.checkTapEnd();
 };
 
 publicGameField.randomNumber = function(low, high) {
