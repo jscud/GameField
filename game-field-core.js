@@ -17,6 +17,10 @@
        }
      };
    </script>
+
+   For a better experience in mobile browsers, you may want to add the
+   following in the <head> of the page's HTML:
+   <meta name="viewport" content="width=device-width, initial-scale=1">
 */
 
 // Unnamed closure to avoid polluting the global namespace.
