@@ -27,6 +27,8 @@
 (function() {
 var publicGameField = {};
 
+var GAME_FIELD_CANVAS_ID_ = 'game-field-canvas';
+
 // Constructor for a game field state container.
 function GameEngine() {
   this.numRows = 0;
@@ -57,30 +59,32 @@ GameEngine.prototype.resetEventLoop_ = function() {
   }, this.eventLoopDelay);
 };
 
+GameEngine.prototype.convertPageXYToTileXY_ = function(e) {
+  var x;
+  var y;
+  if (e.pageX || e.pageY) { 
+    x = e.pageX;
+    y = e.pageY;
+  } else { 
+    x = e.clientX + document.body.scrollLeft +
+        document.documentElement.scrollLeft; 
+    y = e.clientY + document.body.scrollTop +
+        document.documentElement.scrollTop; 
+  } 
+  var fieldCanvas = document.getElementById(GAME_FIELD_CANVAS_ID_);
+  x -= fieldCanvas.offsetLeft;
+  y -= fieldCanvas.offsetTop;
+
+  return [Math.floor(x / this.tileSize), Math.floor(y / this.tileSize)];
+}
+
 // Starts recording clicks on the canvas, saving them in the GameField click
 // queue.
 GameEngine.prototype.listenForEvents_ = function() {
-  var field = document.getElementById('field');
+  var field = document.getElementById(GAME_FIELD_CANVAS_ID_);
   var thisGameEngine = this;
   field.addEventListener('click', function(e) {
-    var x;
-    var y;
-    if (e.pageX || e.pageY) { 
-      x = e.pageX;
-      y = e.pageY;
-    } else { 
-      x = e.clientX + document.body.scrollLeft +
-          document.documentElement.scrollLeft; 
-      y = e.clientY + document.body.scrollTop +
-          document.documentElement.scrollTop; 
-    } 
-    var fieldCanvas = document.getElementById('field');
-    x -= fieldCanvas.offsetLeft;
-    y -= fieldCanvas.offsetTop;
-
-    thisGameEngine.clickQueue.push(
-        [Math.floor(x / thisGameEngine.tileSize),
-         Math.floor(y / thisGameEngine.tileSize)]);
+    thisGameEngine.clickQueue.push(thisGameEngine.convertPageXYToTileXY_(e));
   }, true);
 };
 
@@ -103,7 +107,7 @@ GameEngine.prototype.resetCanvas = function(containerId, numPixelsWide,
       maxPixelSizeBasedOnWidth, maxPixelSizeBasedOnHeight);
   // Create new game field.
   var gameFieldCanvas = document.createElement('canvas');
-  gameFieldCanvas.id = 'field';
+  gameFieldCanvas.id = GAME_FIELD_CANVAS_ID_;
   gameFieldCanvas.width = pixelSize * numPixelsWide;
   gameFieldCanvas.height = pixelSize * numPixelsHigh;
   gameFieldCanvas.style.border = '1px solid #000000';
@@ -117,7 +121,7 @@ GameEngine.prototype.resetCanvas = function(containerId, numPixelsWide,
 };
 
 GameEngine.prototype.setPixel = function(x, y, color) {
-  var field = document.getElementById('field');
+  var field = document.getElementById(GAME_FIELD_CANVAS_ID_);
   var fieldContext = field.getContext('2d');
   fieldContext.fillStyle = color;
   fieldContext.fillRect(
