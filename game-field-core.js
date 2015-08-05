@@ -44,6 +44,8 @@ function GameEngine() {
 GameEngine.prototype.reset_ = function() {
   this.tapStartQueue = [];
   this.tapEndQueue = [];
+  this.tapMoveQueue = [];
+  this.tapMoveLastPosition = [];
   this.eventListenerStarted = false;
 };
 
@@ -93,6 +95,15 @@ GameEngine.prototype.listenForEvents_ = function() {
   field.addEventListener('mouseup', function(e) {
     thisGameEngine.tapEndQueue.push(
         thisGameEngine.convertPageXYToTileXY_(e));
+  }, true);
+
+  field.addEventListener('mousemove', function(e) {
+    var position = thisGameEngine.convertPageXYToTileXY_(e);
+    if (position[0] != thisGameEngine.tapMoveLastPosition[0] ||
+        position[1] != thisGameEngine.tapMoveLastPosition[1]) {
+      thisGameEngine.tapMoveLastPosition = position;
+      thisGameEngine.tapMoveQueue.push(position);
+    }
   }, true);
 };
 
@@ -147,6 +158,15 @@ GameEngine.prototype.checkTapStart = function() {
   return null;
 };
 
+GameEngine.prototype.checkTapMove = function() {
+  if (this.tapMoveQueue.length > 0) {
+    var tapMove = this.tapMoveQueue[0];
+    this.tapMoveQueue = this.tapMoveQueue.slice(1);
+    return {x: tapMove[0], y: tapMove[1]};
+  }
+  return null;
+};
+
 // Gets the ending location for the next stored "tap" if there is one. A tap
 // is either a click or a press with a finger (on a mobile device).
 GameEngine.prototype.checkTapEnd = function() {
@@ -182,6 +202,10 @@ publicGameField.setPixel = function(x, y, color) {
 
 publicGameField.checkTapStart = function() {
   return gameField.checkTapStart();
+};
+
+publicGameField.checkTapMove = function() {
+  return gameField.checkTapMove();
 };
 
 publicGameField.checkTapEnd = function() {
