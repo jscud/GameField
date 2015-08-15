@@ -42,6 +42,7 @@ function GameEngine() {
 // Called before creating a new canvas to remove internal state associated
 // with a run on a GameField program.
 GameEngine.prototype.reset_ = function() {
+  this.tapStarted = false;
   this.tapMoveLastPosition = [];
 };
 
@@ -84,6 +85,7 @@ GameEngine.prototype.listenForEvents_ = function() {
   var thisGameEngine = this;
 
   field.addEventListener('mousedown', function(e) {
+    thisGameEngine.tapStarted = true;
     if (publicGameField.eachTapStart) {
       var tileXY = thisGameEngine.convertPageXYToTileXY_(e);
       publicGameField.eachTapStart(tileXY[0], tileXY[1]);
@@ -97,8 +99,18 @@ GameEngine.prototype.listenForEvents_ = function() {
     }
   }, true);
 
+  // If the mouse button was released or user's finger was lifted from the
+  // screen anywhere on the page (not just in the field canvas) we want to
+  // stop counting mouse movements as part of a tap move. Without this, if
+  // the user presses the mouse button in the canvas, moves off canvas, then
+  // releases the mouse button, their moves would incorrectly think the
+  // mouse button was still pressed.
+  document.addEventListener('mouseup', function(e) {
+    thisGameEngine.tapStarted = false;
+  }, true);
+
   field.addEventListener('mousemove', function(e) {
-    if (publicGameField.eachTapMove) {
+    if (publicGameField.eachTapMove && thisGameEngine.tapStarted) {
       var position = thisGameEngine.convertPageXYToTileXY_(e);
       if (position[0] != thisGameEngine.tapMoveLastPosition[0] ||
           position[1] != thisGameEngine.tapMoveLastPosition[1]) {
