@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <script src="game-field-core.js"></script>
+    <div id="container"></div>
+    <script>
+      // Random paint example. Colors each pixel moved through while the mouse
+      // button is pressed or the screen is touched.
+      GameField.resetCanvas('container', 20, 20);
+
+      GameField.eachTapStart = function(x, y) {
+        GameField.setPixel(x, y, GameField.randomColor());
+      };
+
+      GameField.eachTapMove = function(x, y) {
+        GameField.setPixel(x, y, GameField.randomColor());
+      };
+    </script>
+  </body>
+</html>
