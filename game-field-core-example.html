@@ -8,11 +8,8 @@
     <div id="container"></div>
     <script>
       GameField.resetCanvas('container', 20, 20);
-      GameField.eachTick = function() {
-        var tap = GameField.checkTapStart();
-        if (tap) {
-          GameField.setPixel(tap.x, tap.y, GameField.randomColor());
-        }
+      GameField.eachTapStart = function(x, y) {
+        GameField.setPixel(x, y, GameField.randomColor());
       };
     </script>
   </body>

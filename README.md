@@ -14,9 +14,6 @@ Simple Example
 This example program checks for a click on each run of the event loop and
 sets the clicked pixel to a random color.
 
-    GameField.eachTick = function() {
-      var tap = GameField.checkTapStart();
-      if (tap) {
-        GameField.setPixel(tap.x, tap.y, GameField.randomColor());
-      }
+    GameField.eachTapStart = function(x, y) {
+      GameField.setPixel(x, y, GameField.randomColor());
     };

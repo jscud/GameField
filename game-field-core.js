@@ -42,11 +42,7 @@ function GameEngine() {
 // Called before creating a new canvas to remove internal state associated
 // with a run on a GameField program.
 GameEngine.prototype.reset_ = function() {
-  this.tapStartQueue = [];
-  this.tapEndQueue = [];
-  this.tapMoveQueue = [];
   this.tapMoveLastPosition = [];
-  this.eventListenerStarted = false;
 };
 
 // Starts an event loop to call GameField.eachTick at the interval specified
@@ -88,21 +84,27 @@ GameEngine.prototype.listenForEvents_ = function() {
   var thisGameEngine = this;
 
   field.addEventListener('mousedown', function(e) {
-    thisGameEngine.tapStartQueue.push(
-        thisGameEngine.convertPageXYToTileXY_(e));
+    if (publicGameField.eachTapStart) {
+      var tileXY = thisGameEngine.convertPageXYToTileXY_(e);
+      publicGameField.eachTapStart(tileXY[0], tileXY[1]);
+    }
   }, true);
 
   field.addEventListener('mouseup', function(e) {
-    thisGameEngine.tapEndQueue.push(
-        thisGameEngine.convertPageXYToTileXY_(e));
+    if (publicGameField.eachTapStop) {
+      var tileXY = thisGameEngine.convertPageXYToTileXY_(e);
+      publicGameField.eachTapStop(tileXY[0], tileXY[1]);
+    }
   }, true);
 
   field.addEventListener('mousemove', function(e) {
-    var position = thisGameEngine.convertPageXYToTileXY_(e);
-    if (position[0] != thisGameEngine.tapMoveLastPosition[0] ||
-        position[1] != thisGameEngine.tapMoveLastPosition[1]) {
-      thisGameEngine.tapMoveLastPosition = position;
-      thisGameEngine.tapMoveQueue.push(position);
+    if (publicGameField.eachTapMove) {
+      var position = thisGameEngine.convertPageXYToTileXY_(e);
+      if (position[0] != thisGameEngine.tapMoveLastPosition[0] ||
+          position[1] != thisGameEngine.tapMoveLastPosition[1]) {
+        thisGameEngine.tapMoveLastPosition = position;
+        publicGameField.eachTapMove(position[0], position[1])
+      }
     }
   }, true);
 };
@@ -145,37 +147,6 @@ GameEngine.prototype.setPixel = function(x, y, color) {
   fieldContext.fillStyle = color;
   fieldContext.fillRect(
       x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
-};
-
-// Gets the next stored "tap" start if there is one. A tap is either a click
-// or a press with a finger (on a mobile device).
-GameEngine.prototype.checkTapStart = function() {
-  if (this.tapStartQueue.length > 0) {
-    var tapStart = this.tapStartQueue[0];
-    this.tapStartQueue = this.tapStartQueue.slice(1);
-    return {x: tapStart[0], y: tapStart[1]};
-  }
-  return null;
-};
-
-GameEngine.prototype.checkTapMove = function() {
-  if (this.tapMoveQueue.length > 0) {
-    var tapMove = this.tapMoveQueue[0];
-    this.tapMoveQueue = this.tapMoveQueue.slice(1);
-    return {x: tapMove[0], y: tapMove[1]};
-  }
-  return null;
-};
-
-// Gets the ending location for the next stored "tap" if there is one. A tap
-// is either a click or a press with a finger (on a mobile device).
-GameEngine.prototype.checkTapEnd = function() {
-  if (this.tapEndQueue.length > 0) {
-    var tapEnd = this.tapEndQueue[0];
-    this.tapEndQueue = this.tapEndQueue.slice(1);
-    return {x: tapEnd[0], y: tapEnd[1]};
-  }
-  return null;
 };
 
 function randomNumber(low, high) {
